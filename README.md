@@ -2,16 +2,12 @@
 
 # Modbus library for STM32 Microcontrollers
 
-**This is a fork of [MODBUS-STM32-HAL-FreeRTOS](https://github.com/alejoseb/Modbus-STM32-HAL-FreeRTOS). This is a more stripped down version that includes more modbus functions (reading read only coils and registers)**
+**This is a fork of [MODBUS-STM32-HAL-FreeRTOS](https://github.com/alejoseb/Modbus-STM32-HAL-FreeRTOS) from [alejoseb](https://github.com/alejoseb) . This is a more stripped down version that includes more modbus functions (reading read only coils and registers)**
 
 USART and USB-CDC Modbus RTU Master and Slave library for STM32 microcontrollers 
 based on Cube HAL and FreeRTOS.
 
 Includes a project for a Nucleo-P-WB55 project. Includes defines for other STM32 boards. 
-
-This is a port of the Modbus library for Arduino: https://github.com/smarmengol/Modbus-Master-Slave-for-Arduino
-
-`NEW` Script examples to test the library based on Pymodbus
 
 ## Characteristics:
 - Portable to any STM32 MCU supported by ST Cube HAL.
