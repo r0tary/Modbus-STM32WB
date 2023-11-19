@@ -1,19 +1,8 @@
----
-tags:
-  - MODBUS
-link:
-  - "[[MODBUS]]"
-  - "[[PI_MBUS_300.pdf]]"
-Date: 17-11-2023
-cssclasses: []
----
-
 # MODBUS STM32 HAL - Master and Slave configuration  documentation
 
 ---
 
->[!info]
->This is code documentation for a MODBUS library running on a STM32 using FreeRTOS. To get better understanding of the MODBUS protocol it is advised to look at [[PI_MBUS_300.pdf]] first.
+>This is code documentation for a MODBUS library running on a STM32 using FreeRTOS. To get better understanding of the MODBUS protocol it is advised to look at [Modbus Protocol](url) first.
 
 ## Configuration
 The library allows multiple instances of Modbus to run. To allow for this and for more robust/ease of use a structure is used with the **modbushandler_t** type. This structure houses configuration information, register locations, timers, semaphores and the task handle.
@@ -55,6 +44,7 @@ In case DMA is enabled, half-transfer is disabled by calling **__HAL_DMA_DISABLE
 
 
 ![](https://i.imgur.com/j5njxIp.png)
+
 The above diagram showcases the thread for a slave configuration.
 
 
@@ -67,6 +57,8 @@ The above diagram showcases the thread for a slave configuration.
 After the thread is awoken it checks the message ID to see if it is for the slave device. It will call a function to validate/calculate the **CRC** value, to see if the message has any missing bits lost in transmission. 
 
 If everything is in order, the thread will take the semaphore and process the requested function and send an answer. After which it will release the semaphore and go back in to a blocked state.
+
+---
 
 #### Master Configuration
 The workings for a device that is configured as a master is a bit more complicated. A thread will use either **ModbusQuery** or **ModbusQueryInject** function. It will pass it the necessary information like the slave ID, function code, requested register and count. 
