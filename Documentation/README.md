@@ -48,9 +48,9 @@ In case DMA is enabled, half-transfer is disabled by calling **__HAL_DMA_DISABLE
 The above diagram showcases the thread for a slave configuration.
 
 
-### Modbus Thread
+## Modbus Thread
 
-#### Slave Configuration
+### Slave Configuration
 
 **ulTskNotify** is used to block the thread indefinitely. The task is unblocked in the UART callback function by using **xTaskNotifyFromISR** to notify the thread. 
 
@@ -60,7 +60,7 @@ If everything is in order, the thread will take the semaphore and process the re
 
 ---
 
-#### Master Configuration
+### Master Configuration
 The workings for a device that is configured as a master is a bit more complicated. A thread will use either **ModbusQuery** or **ModbusQueryInject** function. It will pass it the necessary information like the slave ID, function code, requested register and count. 
 
 The function will then send a queue message with this information to the Modbus Master thread **(StartTaskModbusMaster)**.
