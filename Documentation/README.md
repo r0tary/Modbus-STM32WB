@@ -27,7 +27,7 @@ int main(void){
 }
 ```
 
-During initialization functions the rest of the structure is connected with the declared semaphore, task and timer(s).
+During initialization functions the rest of the structure is connected with the declared semaphore, task and timer(s). To see the full structure see the [Modbus.h](url) file
 
 
 ## Block Diagram
