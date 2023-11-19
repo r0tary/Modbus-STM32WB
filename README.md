@@ -9,6 +9,12 @@ based on Cube HAL and FreeRTOS.
 
 Includes a project for a Nucleo-P-WB55 project. Includes defines for other STM32 boards. 
 
+## Documentation
+To see more information about the libararys functions/inner workings see the [documentation](https://github.com/r0tary/Modbus-STM32/tree/main/Documentation).
+
+**Documenattion includes:**
+- Master and Slave configuration and thread/task description with a diagram
+
 ## Characteristics:
 - Portable to any STM32 MCU supported by ST Cube HAL.
 - Portable to other Microcontrollers, like the [Raspberry PI Pico](https://github.com/alejoseb/Modbus-PI-Pico-FreeRTOS), requiring little engineering effort.
