@@ -41,13 +41,6 @@ const osThreadAttr_t myTaskModbusA_attributes = {
     .stack_size = 128 * 4
 };
 
-const osThreadAttr_t myTaskModbusA_attributesTCP = {
-    .name = "TaskModbusSlave",
-    .priority = (osPriority_t) osPriorityNormal,
-    .stack_size = 256 * 6
-};
-
-
 
 //Task Modbus Master
 //osThreadId_t myTaskModbusAHandle;
@@ -56,15 +49,6 @@ const osThreadAttr_t myTaskModbusB_attributes = {
     .priority = (osPriority_t) osPriorityNormal,
     .stack_size = 128 * 4
 };
-
-
-const osThreadAttr_t myTaskModbusB_attributesTCP = {
-    .name = "TaskModbusMaster",
-    .priority = (osPriority_t) osPriorityNormal,
-    .stack_size = 256 * 4
-};
-
-
 
 
 //Semaphore to access the Modbus Data
@@ -368,23 +352,6 @@ void ModbusStart(modbusHandler_t * modH)
 
 }
 
-#if ENABLE_USB_CDC == 1
-extern void MX_USB_DEVICE_Init(void);
-void ModbusStartCDC(modbusHandler_t * modH)
-{
-
-
-    if (modH->uModbusType == MB_SLAVE &&  modH->u16regs == NULL )
-    {
-    	while(1); //ERROR define the DATA pointer shared through Modbus
-    }
-
-    modH->u8lastRec = modH->u8BufferSize = 0;
-    modH->u16InCnt = modH->u16OutCnt = modH->u16errCnt = 0;
-}
-#endif
-
-
 void vTimerCallbackT35(TimerHandle_t *pxTimer)
 {
 	//Notify that a stream has just arrived
@@ -431,20 +398,6 @@ void StartTaskModbusSlave(void *argument)
 
 	modH->i8lastError = 0;
 
-
-#if ENABLE_USB_CDC ==1
-
-	  if(modH-> xTypeHW == USB_CDC_HW)
-	  {
-		      ulTaskNotifyTake(pdTRUE, portMAX_DELAY); /* Block indefinitely until a Modbus Frame arrives */
-			  if (modH->u8BufferSize == ERR_BUFF_OVERFLOW) // is this necessary?
-			  {
-			     modH->i8lastError = ERR_BUFF_OVERFLOW;
-			  	 modH->u16errCnt++;
-			  	 continue;
-			  }
-	  }
-#endif
 
    if(modH->xTypeHW == USART_HW || modH->xTypeHW == USART_HW_DMA)
    {
@@ -705,19 +658,7 @@ void StartTaskModbusMaster(void *argument)
     	  continue;
       }
 
-
-#if ENABLE_USB_CDC ==1
-
-      if(modH->xTypeHW == USART_HW) //TCP and USB_CDC use different methods to get the buffer
-      {
-    	  getRxBuffer(modH);
-      }
-
-#else
       getRxBuffer(modH);
-#endif
-
-
 
 	  if ( modH->u8BufferSize < 6){
 
@@ -1072,10 +1013,6 @@ void buildException( uint8_t u8exception, modbusHandler_t *modH )
 }
 
 
-#if ENABLE_USB_CDC == 1
-extern uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
-#endif
-
 /**
  * @brief
  * This method transmits u8Buffer to Serial line.
@@ -1096,11 +1033,6 @@ static void sendTxBuffer(modbusHandler_t *modH)
     modH->u8Buffer[ modH->u8BufferSize ] = u16crc & 0x00ff;
     modH->u8BufferSize++;
 
-
-#if ENABLE_USB_CDC == 1
-    if(modH->xTypeHW == USART_HW || modH->xTypeHW == USART_HW_DMA )
-    {
-#endif
 
     	if (modH->EN_Port != NULL)
         {
@@ -1158,19 +1090,6 @@ static void sendTxBuffer(modbusHandler_t *modH)
          {
         	 xTimerReset(modH->xTimerTimeout,0);
          }
-
-#if ENABLE_USB_CDC == 1
-    else if(modH->xTypeHW == USB_CDC_HW)
-	{
-    	CDC_Transmit_FS(modH->u8Buffer,  modH->u8BufferSize);
-    	// set timeout for master query
-    	if(modH->uModbusType == MB_MASTER )
-    	{
-    	   	xTimerReset(modH->xTimerTimeout,0);
-    	}
-
-	}
-#endif
 
      modH->u8BufferSize = 0;
      // increase message counter

@@ -134,7 +134,6 @@ int main(void)
  //Start capturing traffic on serial Port
   ModbusStart(&ModbusH);
 
-
   /* USER CODE END 2 */
 
   /* Init scheduler */

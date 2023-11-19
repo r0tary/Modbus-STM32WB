@@ -22,8 +22,6 @@
 typedef enum
 {
     USART_HW = 1,
-    USB_CDC_HW = 2,
-    TCP_HW = 3,
 	USART_HW_DMA = 4,
 }mb_hardware_t ;
 
@@ -217,10 +215,6 @@ extern modbusHandler_t *mHandlers[MAX_M_HANDLERS];
 // Function prototypes
 void ModbusInit(modbusHandler_t * modH);
 void ModbusStart(modbusHandler_t * modH);
-
-#if ENABLE_USB_CDC == 1
-void ModbusStartCDC(modbusHandler_t * modH);
-#endif
 
 void setTimeOut( uint16_t u16timeOut); //!<write communication watch-dog timer
 uint16_t getTimeOut(); //!<get communication watch-dog timer value
