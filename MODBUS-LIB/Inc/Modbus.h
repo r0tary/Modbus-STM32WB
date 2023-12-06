@@ -33,15 +33,6 @@ typedef enum
 }mb_masterslave_t ;
 
 
-static uint16_t ModbusDATA[50]={
-		0000,  1111,  2222,  3333,  4444,  5555,  6666,  7777,  8888,  9999,   // 0-9   40001-40010
-		12345, 15432, 15535, 10234, 19876, 13579, 10293, 19827, 13456, 14567,  // 10-19 40011-40020
-		21345, 22345, 24567, 25678, 26789, 24680, 20394, 29384, 26937, 27654,  // 20-29 40021-40030
-		31245, 31456, 34567, 35678, 36789, 37890, 30948, 34958, 35867, 36092,  // 30-39 40031-40040
-		45678, 46789, 47890, 41235, 42356, 43567, 40596, 49586, 48765, 41029,  // 40-49 40041-40050
-};
-
-
 /**
  * @enum MB_FC
  * @brief
@@ -131,7 +122,20 @@ typedef union {
 } bytesFields ;
 
 
+/**
+ * @enum
+ * @brief
+ * Database/register list
+ *
+ */
 
+enum
+{
+	DB_COILS = 1,
+	DB_INPUT_COILS = 2,
+	DB_HOLDING_REGISTER = 3,
+	DB_INPUT_REGISTERS = 4
+};
 
 
 /**
@@ -172,10 +176,16 @@ typedef struct
 	uint8_t u8Buffer[MAX_BUFFER]; //Modbus buffer for communication
 	uint8_t u8BufferSize;
 	uint8_t u8lastRec;
-	uint16_t *u16regs;
+	uint16_t *u16regsHR;
+	uint16_t *u16regsRO;
+	uint16_t *u16regsCoils;
+	uint16_t *u16regsCoilsRO;
 	uint16_t u16InCnt, u16OutCnt, u16errCnt; //keep statistics of Modbus traffic
 	uint16_t u16timeOut;
-	uint16_t u16regsize;
+	uint16_t u16regHR_size;
+	uint16_t u16regRO_size;
+	uint16_t u16regCoils_size;
+	uint16_t u16regCoilsRO_size;
 	uint8_t dataRX;
 	int8_t i8state;
 

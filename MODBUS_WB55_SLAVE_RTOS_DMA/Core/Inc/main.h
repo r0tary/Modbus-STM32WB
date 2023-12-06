@@ -47,8 +47,6 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-//extern modbusHandler_t ModbusH;
-//extern uint16_t ModbusDATA[128];
 
 /* USER CODE END EM */
 
@@ -86,6 +84,34 @@ void Error_Handler(void);
 #define STLINK_TX_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
+
+/**
+ * @brief
+ * Registers used by Modbus, the ADC and Zigbee to store values
+ */
+//Holding registers - can be written and read from
+static uint16_t Holding_Registers_Database[10]={
+		0000,  1111,  2222,  3333,  4444,  5555,  6666,  7777,  8888,  9999
+};
+
+//Input Registers - can only be read
+static uint16_t Input_Register_Database[20] = {
+		0000,  1111,  2222,  3333,  4444,  5555,  6666,  7777,  8888,  9999
+};
+
+//Coil database - 1bit registers, can be written and read from
+static uint16_t Holding_Coils_Database[10]={
+		0b1010101001010101, 0b0100100110011100,
+		0b1100110010100011, 0b0110011010101111,
+		0b0110000010111100
+};
+
+//Input coil database - 1bit registers, can only be read
+static  uint16_t Input_Coils_Database[10]={
+		0b0100100110011100, 0b1010101001010101,
+		0b1100110010100011, 0b0110011010101111,
+		0b0110000010111100
+};
 
 /* USER CODE END Private defines */
 

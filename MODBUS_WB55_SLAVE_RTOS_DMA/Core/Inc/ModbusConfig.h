@@ -22,4 +22,5 @@
 #define MAX_TELEGRAMS 2     //Max number of Telegrams in master queue
 
 
+
 #endif /* THIRD_PARTY_MODBUS_LIB_CONFIG_MODBUSCONFIG_H_ */

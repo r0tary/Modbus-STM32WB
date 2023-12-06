@@ -68,11 +68,11 @@ static uint8_t validateRequest(modbusHandler_t * modH);
 static uint16_t word(uint8_t H, uint8_t l);
 static void get_FC1(modbusHandler_t *modH);
 static void get_FC3(modbusHandler_t *modH);
-static int8_t process_FC1(modbusHandler_t *modH );
-static int8_t process_FC3(modbusHandler_t *modH );
+static int8_t process_FC1(modbusHandler_t *modH, uint8_t Database );
+static int8_t process_FC3(modbusHandler_t *modH, uint8_t Database );
 static int8_t process_FC5( modbusHandler_t *modH);
-static int8_t process_FC6(modbusHandler_t *modH );
-static int8_t process_FC15(modbusHandler_t *modH );
+static int8_t process_FC6(modbusHandler_t *modH);
+static int8_t process_FC15(modbusHandler_t *modH);
 static int8_t process_FC16(modbusHandler_t *modH);
 static void vTimerCallbackT35(TimerHandle_t *pxTimer);
 static void vTimerCallbackTimeout(TimerHandle_t *pxTimer);
@@ -259,7 +259,7 @@ void ModbusInit(modbusHandler_t * modH)
 void ModbusStart(modbusHandler_t * modH)
 {
 
-	if(modH->xTypeHW != USART_HW && modH->xTypeHW != TCP_HW && modH->xTypeHW != USB_CDC_HW  && modH->xTypeHW != USART_HW_DMA )
+	if(modH->xTypeHW != USART_HW && modH->xTypeHW != USART_HW_DMA )
 	{
 
 		while(1); //ERROR select the type of hardware
@@ -281,7 +281,7 @@ void ModbusStart(modbusHandler_t * modH)
           	HAL_GPIO_WritePin(modH->EN_Port, modH->EN_Pin, GPIO_PIN_RESET);
           }
 
-          if (modH->uModbusType == MB_SLAVE &&  modH->u16regs == NULL )
+          if (modH->uModbusType == MB_SLAVE &&  modH->u16regsHR == NULL )
           {
           	while(1); //ERROR define the DATA pointer shared through Modbus
           }
@@ -450,12 +450,16 @@ void StartTaskModbusSlave(void *argument)
 	 switch(modH->u8Buffer[ FUNC ] )
 	 {
 			case MB_FC_READ_COILS:
+				modH->i8state = process_FC1(modH,DB_COILS);
+				break;
 			case MB_FC_READ_DISCRETE_INPUT:
-				modH->i8state = process_FC1(modH);
+				modH->i8state = process_FC1(modH,DB_INPUT_COILS);
+				break;
+			case MB_FC_READ_REGISTERS:
+				modH->i8state = process_FC3(modH,DB_HOLDING_REGISTER);
 				break;
 			case MB_FC_READ_INPUT_REGISTER:
-			case MB_FC_READ_REGISTERS :
-				modH->i8state = process_FC3(modH);
+				modH->i8state = process_FC3(modH,DB_INPUT_REGISTERS);
 				break;
 			case MB_FC_WRITE_COIL:
 				modH->i8state = process_FC5(modH);
@@ -541,7 +545,16 @@ int8_t SendQuery(modbusHandler_t *modH ,  modbus_t telegram )
 	}
 
 
-	modH->u16regs = telegram.u16reg;
+	if (telegram.u8fct == MB_FC_READ_COILS || telegram.u8fct == MB_FC_READ_DISCRETE_INPUT ||
+		telegram.u8fct == MB_FC_WRITE_COIL || telegram.u8fct == MB_FC_WRITE_MULTIPLE_COILS)
+	{
+		modH->u16regsCoils = telegram.u16reg;
+	}
+	else if (telegram.u8fct == MB_FC_READ_REGISTERS || telegram.u8fct == MB_FC_READ_INPUT_REGISTER ||
+			telegram.u8fct == MB_FC_WRITE_REGISTER || telegram.u8fct == MB_FC_WRITE_MULTIPLE_REGISTERS)
+	{
+		modH->u16regsHR = telegram.u16reg;
+	}
 
 	// telegram header
 	modH->u8Buffer[ ID ]         = telegram.u8id;
@@ -735,12 +748,12 @@ void get_FC1(modbusHandler_t *modH)
 
         if(i%2)
         {
-        	modH->u16regs[i/2]= word(modH->u8Buffer[i+u8byte], lowByte(modH->u16regs[i/2]));
+        	modH->u16regsCoils[i/2]= word(modH->u8Buffer[i+u8byte], lowByte(modH->u16regsCoils[i/2]));
         }
         else
         {
 
-        	modH->u16regs[i/2]= word(highByte(modH->u16regs[i/2]), modH->u8Buffer[i+u8byte]);
+        	modH->u16regsCoils[i/2]= word(highByte(modH->u16regsCoils[i/2]), modH->u8Buffer[i+u8byte]);
         }
 
      }
@@ -759,7 +772,7 @@ void get_FC3(modbusHandler_t *modH)
 
     for (i=0; i< modH->u8Buffer[ 2 ] /2; i++)
     {
-    	modH->u16regs[ i ] = word(modH->u8Buffer[ u8byte ], modH->u8Buffer[ u8byte +1 ]);
+    	modH->u16regsHR[ i ] = word(modH->u8Buffer[ u8byte ], modH->u8Buffer[ u8byte +1 ]);
         u8byte += 2;
     }
 }
@@ -908,7 +921,7 @@ uint8_t validateRequest(modbusHandler_t *modH)
 	    	u16NRegs = word( modH->u8Buffer[ NB_HI ], modH->u8Buffer[ NB_LO ]) /16;
 	    	if(word( modH->u8Buffer[ NB_HI ], modH->u8Buffer[ NB_LO ]) % 16) u16NRegs++; // check for incomplete words
 	    	// verify address range
-	    	if((u16AdRegs + u16NRegs) > modH->u16regsize) return EXC_ADDR_RANGE;
+	    	if((u16AdRegs + u16NRegs) > modH->u16regCoils_size) return EXC_ADDR_RANGE;
 
 	    	//verify answer frame size in bytes
 
@@ -921,18 +934,18 @@ uint8_t validateRequest(modbusHandler_t *modH)
 	    case MB_FC_WRITE_COIL:
 	    	u16AdRegs = word( modH->u8Buffer[ ADD_HI ], modH->u8Buffer[ ADD_LO ]) / 16;
 	    	if(word( modH->u8Buffer[ ADD_HI ], modH->u8Buffer[ ADD_LO ]) % 16) u16AdRegs++;	// check for incomplete words
-	        if (u16AdRegs > modH->u16regsize) return EXC_ADDR_RANGE;
+	        if (u16AdRegs > modH->u16regCoils_size) return EXC_ADDR_RANGE;
 	        break;
 	    case MB_FC_WRITE_REGISTER :
 	    	u16AdRegs = word( modH->u8Buffer[ ADD_HI ], modH->u8Buffer[ ADD_LO ]);
-	        if (u16AdRegs > modH-> u16regsize) return EXC_ADDR_RANGE;
+	        if (u16AdRegs > modH-> u16regHR_size) return EXC_ADDR_RANGE;
 	        break;
 	    case MB_FC_READ_REGISTERS :
 	    case MB_FC_READ_INPUT_REGISTER :
 	    case MB_FC_WRITE_MULTIPLE_REGISTERS :
 	    	u16AdRegs = word( modH->u8Buffer[ ADD_HI ], modH->u8Buffer[ ADD_LO ]);
 	        u16NRegs = word( modH->u8Buffer[ NB_HI ], modH->u8Buffer[ NB_LO ]);
-	        if (( u16AdRegs + u16NRegs ) > modH->u16regsize) return EXC_ADDR_RANGE;
+	        if (( u16AdRegs + u16NRegs ) > modH->u16regHR_size) return EXC_ADDR_RANGE;
 
 	        //verify answer frame size in bytes
 	        u16NRegs = u16NRegs*2 + 5; // adding the header  and CRC
@@ -1107,12 +1120,14 @@ static void sendTxBuffer(modbusHandler_t *modH)
  * @return u8BufferSize Response to master length
  * @ingroup discrete
  */
-int8_t process_FC1(modbusHandler_t *modH )
+int8_t process_FC1(modbusHandler_t *modH, uint8_t Database)
 {
     uint16_t u16currentRegister;
     uint8_t u8currentBit, u8bytesno, u8bitsno;
     uint8_t u8CopyBufferSize;
     uint16_t u16currentCoil, u16coil;
+
+    uint16_t *u16regs;
 
     // get the first and last coil from the message
     uint16_t u16StartCoil = word( modH->u8Buffer[ ADD_HI ], modH->u8Buffer[ ADD_LO ] );
@@ -1128,6 +1143,11 @@ int8_t process_FC1(modbusHandler_t *modH )
     // read each coil from the register map and put its value inside the outcoming message
     u8bitsno = 0;
 
+    if (Database == 1){
+    	u16regs = modH->u16regsCoils;
+    }
+
+
     for (u16currentCoil = 0; u16currentCoil < u16Coilno; u16currentCoil++)
     {
         u16coil = u16StartCoil + u16currentCoil;
@@ -1137,7 +1157,7 @@ int8_t process_FC1(modbusHandler_t *modH )
         bitWrite(
         	modH->u8Buffer[ modH->u8BufferSize ],
             u8bitsno,
-		    bitRead( modH->u16regs[ u16currentRegister ], u8currentBit ) );
+		    bitRead( u16regs[ u16currentRegister ], u8currentBit ) );
         u8bitsno ++;
 
         if (u8bitsno > 7)
@@ -1163,7 +1183,7 @@ int8_t process_FC1(modbusHandler_t *modH )
  * @return u8BufferSize Response to master length
  * @ingroup register
  */
-int8_t process_FC3(modbusHandler_t *modH)
+int8_t process_FC3(modbusHandler_t *modH, uint8_t Database)
 {
 
     uint16_t u16StartAdd = word( modH->u8Buffer[ ADD_HI ], modH->u8Buffer[ ADD_LO ] );
@@ -1171,14 +1191,25 @@ int8_t process_FC3(modbusHandler_t *modH)
     uint8_t u8CopyBufferSize;
     uint16_t i;
 
+    uint16_t *u16regs;
+
     modH->u8Buffer[ 2 ]       = u8regsno * 2;
     modH->u8BufferSize         = 3;
 
+    if (Database == DB_HOLDING_REGISTER)
+    {
+    	u16regs = modH->u16regsHR;
+    }
+    else if (Database == DB_INPUT_REGISTERS)
+    {
+    	u16regs = modH->u16regsRO;
+    }
+
     for (i = u16StartAdd; i < u16StartAdd + u8regsno; i++)
     {
-    	modH->u8Buffer[ modH->u8BufferSize ] = highByte(modH->u16regs[i]);
+    	modH->u8Buffer[ modH->u8BufferSize ] = highByte(u16regs[i]);
     	modH->u8BufferSize++;
-    	modH->u8Buffer[ modH->u8BufferSize ] = lowByte(modH->u16regs[i]);
+    	modH->u8Buffer[ modH->u8BufferSize ] = lowByte(u16regs[i]);
     	modH->u8BufferSize++;
     }
     u8CopyBufferSize = modH->u8BufferSize +2;
@@ -1208,7 +1239,7 @@ int8_t process_FC5( modbusHandler_t *modH )
 
     // write to coil
     bitWrite(
-    	modH->u16regs[ u16currentRegister ],
+    	modH->u16regsCoils[ u16currentRegister ],
         u8currentBit,
 		modH->u8Buffer[ NB_HI ] == 0xff );
 
@@ -1229,14 +1260,14 @@ int8_t process_FC5( modbusHandler_t *modH )
  * @return u8BufferSize Response to master length
  * @ingroup register
  */
-int8_t process_FC6(modbusHandler_t *modH )
+int8_t process_FC6(modbusHandler_t *modH)
 {
 
     uint16_t u16add = word( modH->u8Buffer[ ADD_HI ], modH->u8Buffer[ ADD_LO ] );
     uint8_t u8CopyBufferSize;
     uint16_t u16val = word( modH->u8Buffer[ NB_HI ], modH->u8Buffer[ NB_LO ] );
 
-    modH->u16regs[ u16add ] = u16val;
+    modH->u16regsHR[ u16add ] = u16val;
 
     // keep the same header
     modH->u8BufferSize = RESPONSE_SIZE;
@@ -1283,7 +1314,7 @@ int8_t process_FC15( modbusHandler_t *modH )
                     u8bitsno );
 
         bitWrite(
-            modH->u16regs[ u16currentRegister ],
+            modH->u16regsCoils[ u16currentRegister ],
             u8currentBit,
             bTemp );
 
@@ -1332,7 +1363,7 @@ int8_t process_FC16(modbusHandler_t *modH )
         		modH->u8Buffer[ (BYTE_CNT + 1) + i * 2 ],
 				modH->u8Buffer[ (BYTE_CNT + 2) + i * 2 ]);
 
-        modH->u16regs[ u16StartAdd + i ] = temp;
+        modH->u16regsHR[ u16StartAdd + i ] = temp;
     }
     u8CopyBufferSize = modH->u8BufferSize +2;
     sendTxBuffer(modH);
